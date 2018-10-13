@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <thread>
 #include "Image.h"
 #include "AttractorSet.h"
 #include "BoundingBox.h"
@@ -13,7 +14,8 @@
 #include "MiniFB.h"
 #endif
 
-static const uint64_t FEW_SECONDS_ITERATIONS = 25000000LL;
+static const uint64_t FEW_SECONDS_ITERATIONS = 2500000LL;
+static const uint64_t ITERATION_UPDATE = 10000000LL;
 static const int FUSE_LENGTH = 10000;
 static const int WIDTH = 256*2;
 static const int HEIGHT = 256*2;
@@ -63,12 +65,56 @@ static BoundingBox computeBoundingBox(AttractorSet *attractorSet, Variations *va
     return bbox;
 }
 
+static void render(Image *image, AttractorSet *attractorSet, Variations *variations,
+        const ColorMap *map, const BoundingBox &bbox, int seed) {
+
+    // Initialize the seed for our thread.
+    init_rand(seed);
+
+    // Color (0-1) in the color map.
+    double colorMapValue = 0;
+
+    // Starting point.
+    double x = 0;
+    double y = 0;
+
+    for (uint64_t i = 0; i < FEW_SECONDS_ITERATIONS; i++) {
+        Attractor *attractor = attractorSet->choose();
+        attractor->transform(x, y);
+        variations->transform(x, y);
+
+        // Map to pixel.
+        int ix = (int) (bbox.normalizeX(x)*(WIDTH - 1) + 0.5);
+        int iy = (int) ((1 - bbox.normalizeY(y))*(HEIGHT- 1) + 0.5);
+
+        // Move half-way to new color value.
+        double newColorMapValue = attractor->getColorMapValue();
+        colorMapValue = (colorMapValue + newColorMapValue)/2;
+
+        if (image->isInBounds(ix, iy) && i >= FUSE_LENGTH) {
+            // Look up RGB color.
+            int colorIndex = (int) (colorMapValue*255 + 0.5);
+
+            uint8_t red, green, blue;
+            map->getColor(colorIndex, red, green, blue);
+            image->touchPixel(ix, iy, red, green, blue);
+        }
+
+        if (i % ITERATION_UPDATE == 0 && i != 0) {
+            std::cout << (i*100/FEW_SECONDS_ITERATIONS) << "%" << std::endl;
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
-    Image image(WIDTH, HEIGHT);
+    // Number of threads to use.
+    int thread_count;
+    thread_count = std::thread::hardware_concurrency();
+    std::cout << "Using " << thread_count << " threads.\n";
 
     // Load all color maps.
     ColorMaps colorMaps;
-    bool success = colorMaps.read("../ColorMap.txt");
+    bool success = colorMaps.read("ColorMap.txt");
     if (!success) {
         std::cout << "Cannot read color map file." << std::endl;
         return -1;
@@ -88,37 +134,29 @@ int main(int argc, char *argv[]) {
     // Compute bounding box.
     BoundingBox bbox = computeBoundingBox(attractorSet, variations);
 
-    // Color (0-1) in the color map.
-    double colorMapValue = 0;
-
-    // Starting point.
-    double x = 0;
-    double y = 0;
-
-    for (uint64_t i = 0; i < FEW_SECONDS_ITERATIONS; i++) {
-        Attractor *attractor = attractorSet->choose();
-        attractor->transform(x, y);
-        variations->transform(x, y);
-        /// std::cout << attractor << " " << x << " " << y << std::endl;
-
-        // Map to pixel.
-        int ix = (int) (bbox.normalizeX(x)*(WIDTH - 1) + 0.5);
-        int iy = (int) ((1 - bbox.normalizeY(y))*(HEIGHT- 1) + 0.5);
-
-        // Move half-way to new color value.
-        double newColorMapValue = attractor->getColorMapValue();
-        colorMapValue = (colorMapValue + newColorMapValue)/2;
-
-        if (image.isInBounds(ix, iy) && i >= FUSE_LENGTH) {
-            // Look up RGB color.
-            int colorIndex = (int) (colorMapValue*255 + 0.5);
-
-            uint8_t red, green, blue;
-            map->getColor(colorIndex, red, green, blue);
-            image.touchPixel(ix, iy, red, green, blue);
-        }
+    // Generate the image on multiple threads.
+    std::vector<std::thread *> thread;
+    std::vector<Image *> images(thread_count);
+    for (int t = 0; t < thread_count; t++) {
+        images[t] = new Image(WIDTH, HEIGHT);
+        thread.push_back(new std::thread(render,
+                    images[t], attractorSet, variations, map, bbox, random()));
     }
 
+    Image image(WIDTH, HEIGHT);
+
+    // Wait for worker threads to quit and blend images.
+    for (int t = 0; t < thread_count; t++) {
+        thread[t]->join();
+        delete thread[t];
+        thread[t] = 0;
+
+        image.add(*images[t]);
+        delete images[t];
+        images[t] = 0;
+    }
+
+    // Save the final image.
     success = image.save("out.png");
     if (!success) {
         std::cerr << "Cannot write output image.\n";

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include "stb_image_write.h"
 
 // Image with 64-bit values for RGB.
@@ -41,6 +42,20 @@ public:
         mGreen[index] += green;
         mBlue[index] += blue;
         mCount[index] += 1;
+    }
+
+    // Add other image data to ours.
+    void add(const Image &other) {
+        if (other.mWidth != mWidth || other.mHeight != mHeight) {
+            throw std::logic_error("The image sizes must match");
+        }
+
+        for (int i = 0; i < mPixelCount; i++) {
+            mRed[i] += other.mRed[i];
+            mGreen[i] += other.mGreen[i];
+            mBlue[i] += other.mBlue[i];
+            mCount[i] += other.mCount[i];
+        }
     }
 
     // Saves the image to the pathname as a PNG file, returning
