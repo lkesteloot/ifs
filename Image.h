@@ -79,20 +79,12 @@ public:
         }
     }
 
-    // Saves the image to the pathname as a PNG file, returning
-    // whether successful.
-    bool save(const std::string &pathname) const {
-        uint64_t max = 0;
-
+    void toRgb(std::vector<gamma_color> &rgb) const {
         // Find max so we can normalize whole image.
-        for (int i = 0; i < mPixelCount; i++) {
-            if (mRed[i] > max) max = mRed[i];
-            if (mGreen[i] > max) max = mGreen[i];
-            if (mBlue[i] > max) max = mBlue[i];
-        }
+        uint64_t max = getMaxComponent();
         double invCount = max == 0 ? 0 : 1.0/max;
 
-        std::vector<gamma_color> rgb(mPixelCount*3);
+        rgb.resize(mPixelCount*3);
 
         for (int i = 0; i < mPixelCount; i++) {
             // Gamma correct.
@@ -100,11 +92,47 @@ public:
             rgb[i*3 + 1] = (int) (255.99*sqrt(mGreen[i]*invCount));
             rgb[i*3 + 2] = (int) (255.99*sqrt(mBlue[i]*invCount));
         }
+    }
+
+    void toBgra(std::vector<gamma_color> &bgra) const {
+        // Find max so we can normalize whole image.
+        uint64_t max = getMaxComponent();
+        double invCount = max == 0 ? 0 : 1.0/max;
+
+        bgra.resize(mPixelCount*4);
+
+        for (int i = 0; i < mPixelCount; i++) {
+            // Gamma correct.
+            bgra[i*4 + 0] = (int) (255.99*sqrt(mBlue[i]*invCount));
+            bgra[i*4 + 1] = (int) (255.99*sqrt(mGreen[i]*invCount));
+            bgra[i*4 + 2] = (int) (255.99*sqrt(mRed[i]*invCount));
+            bgra[i*4 + 3] = 255;
+        }
+    }
+
+    // Saves the image to the pathname as a PNG file, returning
+    // whether successful.
+    bool save(const std::string &pathname) const {
+        std::vector<gamma_color> rgb;
+        toRgb(rgb);
 
         int success = stbi_write_png(pathname.c_str(),
                 mWidth, mHeight, 3, &rgb[0], mWidth*3);
 
         return success;
+    }
+
+private:
+    uint64_t getMaxComponent() const {
+        uint64_t max = 0;
+
+        for (int i = 0; i < mPixelCount; i++) {
+            if (mRed[i] > max) max = mRed[i];
+            if (mGreen[i] > max) max = mGreen[i];
+            if (mBlue[i] > max) max = mBlue[i];
+        }
+
+        return max;
     }
 };
 

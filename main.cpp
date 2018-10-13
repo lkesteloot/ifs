@@ -2,25 +2,31 @@
 #include <memory>
 #include <cstdint>
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <algorithm>
 #include <thread>
+#include <unistd.h>
 #include "Image.h"
 #include "AttractorSet.h"
 #include "BoundingBox.h"
 #include "Variations.h"
 #include "ColorMaps.h"
 #include "Config.h"
+#include "Timer.h"
 
 #ifdef DISPLAY
 #include "MiniFB.h"
 #endif
 
-static const uint64_t FEW_SECONDS_ITERATIONS = 25000000LL;
+static const bool INTERACTIVE = true;
+static const uint64_t FEW_SECONDS_ITERATIONS = INTERACTIVE ? -1 : 25000000LL;
 static const uint64_t ITERATION_UPDATE = 10000000LL;
 static const int FUSE_LENGTH = 10000;
 static const int WIDTH = 256*2;
 static const int HEIGHT = 256*2;
+
+static bool g_done = false;
 
 static BoundingBox computeBoundingBox(Config const &config) {
     std::cout << "Finding the bounding box..." << std::endl;
@@ -80,7 +86,7 @@ static void render(Image &image, Config const &config,
     double x = 0;
     double y = 0;
 
-    for (uint64_t i = 0; i < FEW_SECONDS_ITERATIONS; i++) {
+    for (uint64_t i = 0; !g_done && i < FEW_SECONDS_ITERATIONS; i++) {
         Attractor const &attractor = config.attractorSet().choose();
         attractor.transform(x, y);
         config.variations().transform(x, y);
@@ -102,7 +108,7 @@ static void render(Image &image, Config const &config,
             image.touchPixel(ix, iy, red, green, blue);
         }
 
-        if (i % ITERATION_UPDATE == 0 && i != 0) {
+        if (!INTERACTIVE && i % ITERATION_UPDATE == 0 && i != 0) {
             std::cout << (i*100/FEW_SECONDS_ITERATIONS) << "%" << std::endl;
         }
     }
@@ -138,6 +144,15 @@ int main(/* int argc, char *argv[] */) {
     // Compute bounding box.
     BoundingBox bbox = computeBoundingBox(*config);
 
+#ifdef DISPLAY
+    if (INTERACTIVE) {
+        if (!mfb_open("ifs", WIDTH, HEIGHT)) {
+            std::cerr << "Failed to open the display.\n";
+            return -1;
+        }
+    }
+#endif
+
     // Generate the image on multiple threads.
     std::vector<std::thread> threads;
     std::vector<std::unique_ptr<Image>> images;
@@ -147,20 +162,57 @@ int main(/* int argc, char *argv[] */) {
                 std::cref(*config), std::cref(bbox), random());
     }
 
-    // Wait for worker threads to quit, then blend images.
-    Image image(WIDTH, HEIGHT);
-    for (int t = 0; t < thread_count; t++) {
-        threads[t].join();
-        image.add(*images[t]);
-    }
+    if (INTERACTIVE) {
+        while (!g_done) {
+            // Time this update work.
+            Timer timer;
 
-    std::cout << "Brightening darks..." << std::endl;
-    image.brightenDarks();
+            // Blend images.
+            Image image(WIDTH, HEIGHT);
+            for (int t = 0; t < thread_count; t++) {
+                image.add(*images[t]);
+            }
 
-    // Save the final image.
-    success = image.save("out.png");
-    if (!success) {
-        std::cerr << "Cannot write output image.\n";
+            // Simulate film exposure.
+            image.brightenDarks();
+
+            // Convert to 8-bit.
+            std::vector<gamma_color> bgra;
+            image.toBgra(bgra);
+
+            int state = mfb_update(&bgra[0]);
+            if (state < 0) {
+                // Tell threads to quit.
+                g_done = true;
+            } else {
+                double elapsed = timer.elapsed();
+
+                std::cerr << "Update took " <<
+                    std::fixed << std::setprecision(elapsed < 0.2 ? 3 : 1) << elapsed << " seconds.\n";
+                usleep(1000*1000);
+            }
+        }
+
+        // Wait for threads to finish.
+        for (int t = 0; t < thread_count; t++) {
+            threads[t].join();
+        }
+    } else {
+        // Wait for worker threads to quit, then blend images.
+        Image image(WIDTH, HEIGHT);
+        for (int t = 0; t < thread_count; t++) {
+            threads[t].join();
+            image.add(*images[t]);
+        }
+
+        std::cout << "Brightening darks..." << std::endl;
+        image.brightenDarks();
+
+        // Save the final image.
+        success = image.save("out.png");
+        if (!success) {
+            std::cerr << "Cannot write output image.\n";
+        }
     }
 
     return 0;
