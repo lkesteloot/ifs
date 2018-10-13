@@ -1,5 +1,7 @@
-# ifs
-Iterated function system
+# Iterated function system
+
+A C++ implementation of an
+[iterated function system](https://en.wikipedia.org/wiki/Iterated_function_system).
 
 # License
 
