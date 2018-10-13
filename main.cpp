@@ -1,4 +1,5 @@
 
+#include <memory>
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -65,7 +66,7 @@ static BoundingBox computeBoundingBox(AttractorSet *attractorSet, Variations *va
     return bbox;
 }
 
-static void render(Image *image, AttractorSet *attractorSet, Variations *variations,
+static void render(Image &image, AttractorSet *attractorSet, Variations *variations,
         const ColorMap *map, const BoundingBox &bbox, int seed) {
 
     // Initialize the seed for our thread.
@@ -91,13 +92,13 @@ static void render(Image *image, AttractorSet *attractorSet, Variations *variati
         double newColorMapValue = attractor->getColorMapValue();
         colorMapValue = (colorMapValue + newColorMapValue)/2;
 
-        if (image->isInBounds(ix, iy) && i >= FUSE_LENGTH) {
+        if (image.isInBounds(ix, iy) && i >= FUSE_LENGTH) {
             // Look up RGB color.
             int colorIndex = (int) (colorMapValue*255 + 0.5);
 
             linear_color red, green, blue;
             map->getColor(colorIndex, red, green, blue);
-            image->touchPixel(ix, iy, red, green, blue);
+            image.touchPixel(ix, iy, red, green, blue);
         }
 
         if (i % ITERATION_UPDATE == 0 && i != 0) {
@@ -135,25 +136,19 @@ int main(int argc, char *argv[]) {
     BoundingBox bbox = computeBoundingBox(attractorSet, variations);
 
     // Generate the image on multiple threads.
-    std::vector<std::thread *> thread;
-    std::vector<Image *> images(thread_count);
+    std::vector<std::thread> threads;
+    std::vector<std::unique_ptr<Image>> images;
     for (int t = 0; t < thread_count; t++) {
-        images[t] = new Image(WIDTH, HEIGHT);
-        thread.push_back(new std::thread(render,
-                    images[t], attractorSet, variations, map, bbox, random()));
+        images.emplace_back(std::make_unique<Image>(WIDTH, HEIGHT));
+        threads.emplace_back(render, std::ref(*images.back()), attractorSet,
+                variations, map, bbox, random());
     }
 
+    // Wait for worker threads to quit, then blend images.
     Image image(WIDTH, HEIGHT);
-
-    // Wait for worker threads to quit and blend images.
     for (int t = 0; t < thread_count; t++) {
-        thread[t]->join();
-        delete thread[t];
-        thread[t] = 0;
-
+        threads[t].join();
         image.add(*images[t]);
-        delete images[t];
-        images[t] = 0;
     }
 
     std::cout << "Brightening darks..." << std::endl;

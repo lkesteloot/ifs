@@ -13,8 +13,8 @@ add_executable(ifs ${SOURCES})
 # What to link with.
 target_link_libraries(ifs m pthread)
 
-# We need these C++ features.
-target_compile_features(ifs PRIVATE cxx_range_for cxx_thread_local)
+# We need C++ 14 features.
+set_property(TARGET ifs PROPERTY CXX_STANDARD 14)
 
 # If we're on MacOS, add minifb.
 if(APPLE)
