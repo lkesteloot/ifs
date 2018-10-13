@@ -131,8 +131,8 @@ int main(/* int argc, char *argv[] */) {
     auto map = colorMaps.get("wooden-highlight");
 
     // Get the attractor set.
-    /// AttractorSet *attractorSet = AttractorSet::makeFernAttractors();
-    /// AttractorSet *attractorSet = AttractorSet::makeSierpinskiAttractors();
+    /// auto attractorSet = AttractorSet::makeFernAttractors();
+    /// auto attractorSet = AttractorSet::makeSierpinskiAttractors();
     auto attractorSet = AttractorSet::makeLeafAttractors3();
 
     // Get variations.
