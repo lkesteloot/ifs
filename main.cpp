@@ -6,6 +6,7 @@
 #include "Image.h"
 #include "AttractorSet.h"
 #include "BoundingBox.h"
+#include "Variations.h"
 
 #ifdef DISPLAY
 #include "MiniFB.h"
@@ -16,13 +17,10 @@ static const int FUSE_LENGTH = 10000;
 static const int WIDTH = 256*2;
 static const int HEIGHT = 256*2;
 
-static BoundingBox computeBoundingBox(AttractorSet *attractorSet) {
+static BoundingBox computeBoundingBox(AttractorSet *attractorSet, Variations *variations) {
     std::cout << "Finding the bounding box..." << std::endl;
 
     BoundingBox bbox;
-
-    // Get variations.
-    /// Variations variations = config.getVariations();
 
     // Starting point.
     double x = 0;
@@ -42,7 +40,7 @@ static BoundingBox computeBoundingBox(AttractorSet *attractorSet) {
 
         Attractor *attractor = attractorSet->choose();
         attractor->transform(x, y);
-        /// variations->transform(point);
+        variations->transform(x, y);
     }
 
     bbox.growBy(0.05);  // 5% larger
@@ -53,7 +51,7 @@ static BoundingBox computeBoundingBox(AttractorSet *attractorSet) {
     std::sort(x_history.begin(), x_history.end());
     std::sort(y_history.begin(), y_history.end());
 
-    const double PERCENTILE = 10.1;
+    const double PERCENTILE = 0.1;
     const int skip = (int) (PERCENTILE*SAMPLE_COUNT/100 + 0.5);
     bbox = BoundingBox(x_history[skip], y_history[skip],
             x_history[SAMPLE_COUNT - skip - 1], y_history[SAMPLE_COUNT - skip - 1]);
@@ -68,11 +66,15 @@ int main(int argc, char *argv[]) {
     Image image(WIDTH, HEIGHT);
 
     // Get the attractor set.
-    // AttractorSet *attractorSet = AttractorSet::makeFernAttractors();
-    AttractorSet *attractorSet = AttractorSet::makeSierpinskiAttractors();
+    /// AttractorSet *attractorSet = AttractorSet::makeFernAttractors();
+    /// AttractorSet *attractorSet = AttractorSet::makeSierpinskiAttractors();
+    AttractorSet *attractorSet = AttractorSet::makeLeafAttractors3();
+
+    // Get variations.
+    Variations *variations = new Variations(0, 0, 0, 0, 1, 0, 0);
 
     // Compute bounding box.
-    BoundingBox bbox = computeBoundingBox(attractorSet);
+    BoundingBox bbox = computeBoundingBox(attractorSet, variations);
 
     // Color (0-1) in the color map.
     double colorMapValue = 0;
@@ -84,7 +86,7 @@ int main(int argc, char *argv[]) {
     for (uint64_t i = 0; i < FEW_SECONDS_ITERATIONS; i++) {
         Attractor *attractor = attractorSet->choose();
         attractor->transform(x, y);
-        // variations->transform(x, y);
+        variations->transform(x, y);
         /// std::cout << attractor << " " << x << " " << y << std::endl;
 
         // Map to pixel.
