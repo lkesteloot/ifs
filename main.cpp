@@ -7,6 +7,7 @@
 #include "AttractorSet.h"
 #include "BoundingBox.h"
 #include "Variations.h"
+#include "ColorMaps.h"
 
 #ifdef DISPLAY
 #include "MiniFB.h"
@@ -65,6 +66,17 @@ static BoundingBox computeBoundingBox(AttractorSet *attractorSet, Variations *va
 int main(int argc, char *argv[]) {
     Image image(WIDTH, HEIGHT);
 
+    // Load all color maps.
+    ColorMaps colorMaps;
+    bool success = colorMaps.read("../ColorMap.txt");
+    if (!success) {
+        std::cout << "Cannot read color map file." << std::endl;
+        return -1;
+    }
+
+    // Get the color map by name.
+    ColorMap *map = colorMaps.get("wooden-highlight");
+
     // Get the attractor set.
     /// AttractorSet *attractorSet = AttractorSet::makeFernAttractors();
     /// AttractorSet *attractorSet = AttractorSet::makeSierpinskiAttractors();
@@ -100,13 +112,14 @@ int main(int argc, char *argv[]) {
         if (image.isInBounds(ix, iy) && i >= FUSE_LENGTH) {
             // Look up RGB color.
             int colorIndex = (int) (colorMapValue*255 + 0.5);
-            /// short[] color = map.getColor(colorIndex);
 
-            image.touchPixel(ix, iy, colorIndex, colorIndex, colorIndex);
+            uint8_t red, green, blue;
+            map->getColor(colorIndex, red, green, blue);
+            image.touchPixel(ix, iy, red, green, blue);
         }
     }
 
-    bool success = image.save("out.png");
+    success = image.save("out.png");
     if (!success) {
         std::cerr << "Cannot write output image.\n";
     }

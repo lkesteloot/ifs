@@ -34,7 +34,7 @@ public:
     /**
      * Add some color to a pixel.
      */
-    void touchPixel(int x, int y, int red, int green, int blue) {
+    void touchPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
         int index = y*mWidth + x;
 
         mRed[index] += red;
@@ -46,7 +46,7 @@ public:
     // Saves the image to the pathname as a PNG file, returning
     // whether successful.
     bool save(const std::string &pathname) const {
-        std::vector<unsigned char> rgb(mPixelCount*3);
+        std::vector<uint8_t> rgb(mPixelCount*3);
 
         for (int i = 0; i < mPixelCount; i++) {
             if (mCount[i] == 0) {
