@@ -1,6 +1,14 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <cstdint>
+
+// Gamma-encoded color component.
+typedef uint8_t gamma_color;
+
+// Linear-encoded color component.
+typedef uint16_t linear_color;
+
 void init_rand(int seed);
 
 // [0, 1)

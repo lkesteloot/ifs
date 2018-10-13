@@ -6,11 +6,12 @@
 #include <istream>
 #include <sstream>
 #include <vector>
+#include "util.h"
 
 class ColorMap {
     static constexpr int ENTRY_COUNT = 256;
     std::string mTitle;
-    std::vector<uint8_t> mRgb;
+    std::vector<linear_color> mRgb;
 
 public:
     ColorMap()
@@ -49,9 +50,10 @@ public:
                 return false;
             }
 
-            mRgb[i*3 + 0] = red;
-            mRgb[i*3 + 1] = green;
-            mRgb[i*3 + 2] = blue;
+            // Convert from gamma to linear.
+            mRgb[i*3 + 0] = gamma_to_linear(red);
+            mRgb[i*3 + 1] = gamma_to_linear(green);
+            mRgb[i*3 + 2] = gamma_to_linear(blue);
         }
 
         return true;
@@ -61,10 +63,22 @@ public:
         return mTitle;
     }
 
-    void getColor(int index, uint8_t &red, uint8_t &green, uint8_t &blue) const {
+    void getColor(int index, linear_color &red, linear_color &green, linear_color &blue) const {
         red = mRgb[index*3 + 0];
         green = mRgb[index*3 + 1];
         blue = mRgb[index*3 + 2];
+    }
+
+private:
+    static linear_color gamma_to_linear(gamma_color c) {
+        // Convert to 0 to 1.
+        double f = (c + 0.5)/256;
+
+        // Convert to linear.
+        f *= f;
+
+        // Convert back to integer.
+        return (linear_color) (f*65535.99);
     }
 };
 

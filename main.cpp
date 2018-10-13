@@ -14,7 +14,7 @@
 #include "MiniFB.h"
 #endif
 
-static const uint64_t FEW_SECONDS_ITERATIONS = 2500000LL;
+static const uint64_t FEW_SECONDS_ITERATIONS = 25000000LL;
 static const uint64_t ITERATION_UPDATE = 10000000LL;
 static const int FUSE_LENGTH = 10000;
 static const int WIDTH = 256*2;
@@ -95,7 +95,7 @@ static void render(Image *image, AttractorSet *attractorSet, Variations *variati
             // Look up RGB color.
             int colorIndex = (int) (colorMapValue*255 + 0.5);
 
-            uint8_t red, green, blue;
+            linear_color red, green, blue;
             map->getColor(colorIndex, red, green, blue);
             image->touchPixel(ix, iy, red, green, blue);
         }

@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <math.h>
 #include "stb_image_write.h"
+#include "util.h"
 
 // Image with 64-bit values for RGB.
 class Image {
@@ -36,7 +37,7 @@ public:
     /**
      * Add some color to a pixel.
      */
-    void touchPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue) {
+    void touchPixel(int x, int y, linear_color red, linear_color green, linear_color blue) {
         int index = y*mWidth + x;
 
         mRed[index] += red;
@@ -89,14 +90,15 @@ public:
             if (mGreen[i] > max) max = mGreen[i];
             if (mBlue[i] > max) max = mBlue[i];
         }
-        double invCount = max == 0 ? 0 : 255.0/max;
+        double invCount = max == 0 ? 0 : 1.0/max;
 
-        std::vector<uint8_t> rgb(mPixelCount*3);
+        std::vector<gamma_color> rgb(mPixelCount*3);
 
         for (int i = 0; i < mPixelCount; i++) {
-            rgb[i*3 + 0] = (int) (mRed[i]*invCount + 0.5);
-            rgb[i*3 + 1] = (int) (mGreen[i]*invCount + 0.5);
-            rgb[i*3 + 2] = (int) (mBlue[i]*invCount + 0.5);
+            // Gamma correct.
+            rgb[i*3 + 0] = (int) (255.99*sqrt(mRed[i]*invCount));
+            rgb[i*3 + 1] = (int) (255.99*sqrt(mGreen[i]*invCount));
+            rgb[i*3 + 2] = (int) (255.99*sqrt(mBlue[i]*invCount));
         }
 
         int success = stbi_write_png(pathname.c_str(),
