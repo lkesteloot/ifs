@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <future>
+#include <thread>
 #include "Image.h"
 #include "AttractorSet.h"
 #include "BoundingBox.h"
@@ -67,10 +67,8 @@ static BoundingBox computeBoundingBox(Config const &config) {
     return bbox;
 }
 
-static std::unique_ptr<Image> render(Config const &config,
+static void render(Image &image, Config const &config,
         const BoundingBox &bbox, int seed) {
-
-    auto image = std::make_unique<Image>(WIDTH, HEIGHT);
 
     // Initialize the seed for our thread.
     init_rand(seed);
@@ -95,21 +93,19 @@ static std::unique_ptr<Image> render(Config const &config,
         double newColorMapValue = attractor.getColorMapValue();
         colorMapValue = (colorMapValue + newColorMapValue)/2;
 
-        if (image->isInBounds(ix, iy) && i >= FUSE_LENGTH) {
+        if (image.isInBounds(ix, iy) && i >= FUSE_LENGTH) {
             // Look up RGB color.
             int colorIndex = (int) (colorMapValue*255 + 0.5);
 
             linear_color red, green, blue;
             config.colorMap().getColor(colorIndex, red, green, blue);
-            image->touchPixel(ix, iy, red, green, blue);
+            image.touchPixel(ix, iy, red, green, blue);
         }
 
         if (i % ITERATION_UPDATE == 0 && i != 0) {
             std::cout << (i*100/FEW_SECONDS_ITERATIONS) << "%" << std::endl;
         }
     }
-
-    return image;
 }
 
 int main(/* int argc, char *argv[] */) {
@@ -143,16 +139,19 @@ int main(/* int argc, char *argv[] */) {
     BoundingBox bbox = computeBoundingBox(*config);
 
     // Generate the image on multiple threads.
-    std::vector<std::future<std::unique_ptr<Image>>> futures;
+    std::vector<std::thread> threads;
+    std::vector<std::unique_ptr<Image>> images;
     for (int t = 0; t < thread_count; t++) {
-        futures.emplace_back(std::async(std::launch::async, render,
-                    std::cref(*config), std::cref(bbox), random()));
+        images.emplace_back(std::make_unique<Image>(WIDTH, HEIGHT));
+        threads.emplace_back(render, std::ref(*images.back()),
+                std::cref(*config), std::cref(bbox), random());
     }
 
     // Wait for worker threads to quit, then blend images.
     Image image(WIDTH, HEIGHT);
     for (int t = 0; t < thread_count; t++) {
-        image.add(*futures[t].get());
+        threads[t].join();
+        image.add(*images[t]);
     }
 
     std::cout << "Brightening darks..." << std::endl;
