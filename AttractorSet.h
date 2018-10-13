@@ -16,7 +16,7 @@ class AttractorSet {
     /**
      * List of attractors.
      */
-    std::vector<Attractor *> mAttractors;
+    std::vector<std::unique_ptr<Attractor>> mAttractors;
     /**
      * List of indexes into the "mAttractors" list, in proportion to their
      * desired probability.
@@ -36,7 +36,7 @@ public:
     void makeEqualProbability() {
         double probability = 1.0/mAttractors.size();
 
-        for (Attractor *a : mAttractors) {
+        for (auto const &a : mAttractors) {
             a->setProbability(probability);
         }
     }
@@ -65,22 +65,22 @@ public:
     /**
      * Return a random attractor.
      */
-    Attractor *choose() {
-        return mAttractors[mProbabilityMap[my_randl() % PROBABILITY_MAP_SIZE]];
+    Attractor const &choose() const {
+        return *mAttractors[mProbabilityMap[my_randl() % PROBABILITY_MAP_SIZE]];
     }
 
     /**
      * Set the attractor at the specified index.
      */
-    void set(int index, Attractor *attractor) {
-        mAttractors[index] = attractor;
+    void set(int index, std::unique_ptr<Attractor> &&attractor) {
+        mAttractors[index] = std::move(attractor);
     }
 
     /**
      * Return the specified attractor.
      */
-    Attractor *get(int index) {
-        return mAttractors[index];
+    Attractor const &get(int index) {
+        return *mAttractors[index];
     }
 
     /**
@@ -97,6 +97,7 @@ public:
         mAttractors[index]->setColorMapValue(colorMapValue);
     }
 
+#if 0
     /**
      * Make a classic fractal fern.
      */
@@ -177,14 +178,15 @@ public:
 
         return a;
     }
+#endif
 
-    static AttractorSet *makeLeafAttractors3() {
-        AttractorSet *a = new AttractorSet(4);
+    static std::unique_ptr<AttractorSet> makeLeafAttractors3() {
+        auto a = std::make_unique<AttractorSet>(4);
 
-        a->set(0, new AverageAttractor(0.0, 0.9));
-        a->set(1, new AverageAttractor(0.3, 0.3));
-        a->set(2, new AverageAttractor(-0.3, -0.3));
-        a->set(3, new AverageAttractor(0.0, -0.9));
+        a->set(0, std::make_unique<AverageAttractor>(0.0, 0.9));
+        a->set(1, std::make_unique<AverageAttractor>(0.3, 0.3));
+        a->set(2, std::make_unique<AverageAttractor>(-0.3, -0.3));
+        a->set(3, std::make_unique<AverageAttractor>(0.0, -0.9));
 
         a->setColorMapValue(0, 0.1);
         a->setColorMapValue(1, 0.3);
@@ -197,7 +199,7 @@ public:
         return a;
     }
 
-    /*
+#if 0
     static AttractorSet *makeFlameTestAttractors(double param) {
         AttractorSet *a = new AttractorSet(4);
 
@@ -260,7 +262,7 @@ public:
 
         return a;
     }
-    */
+#endif
 };
 
 #endif // ATTRACTOR_SET_H

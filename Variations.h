@@ -25,7 +25,7 @@ public:
     /**
      * Modifies the point by a blend of a bunch of variations.
      */
-    void transform(double &x, double &y) {
+    void transform(double &x, double &y) const {
         double tx = x;
         double ty = y;
         x = 0;

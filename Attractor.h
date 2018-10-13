@@ -19,7 +19,7 @@ public:
         mProbability = p;
     }
 
-    double getProbability() {
+    double getProbability() const {
         return mProbability;
     }
 
@@ -28,7 +28,7 @@ public:
         mColorMapValue = colorMapValue;
     }
 
-    double getColorMapValue() {
+    double getColorMapValue() const {
         return mColorMapValue;
     }
 };

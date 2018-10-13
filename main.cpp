@@ -10,6 +10,7 @@
 #include "BoundingBox.h"
 #include "Variations.h"
 #include "ColorMaps.h"
+#include "Config.h"
 
 #ifdef DISPLAY
 #include "MiniFB.h"
@@ -21,7 +22,7 @@ static const int FUSE_LENGTH = 10000;
 static const int WIDTH = 256*2;
 static const int HEIGHT = 256*2;
 
-static BoundingBox computeBoundingBox(AttractorSet *attractorSet, Variations *variations) {
+static BoundingBox computeBoundingBox(Config const &config) {
     std::cout << "Finding the bounding box..." << std::endl;
 
     BoundingBox bbox;
@@ -42,9 +43,9 @@ static BoundingBox computeBoundingBox(AttractorSet *attractorSet, Variations *va
             bbox.grow(x, y);
         }
 
-        Attractor *attractor = attractorSet->choose();
-        attractor->transform(x, y);
-        variations->transform(x, y);
+        Attractor const &attractor = config.attractorSet().choose();
+        attractor.transform(x, y);
+        config.variations().transform(x, y);
     }
 
     bbox.growBy(0.05);  // 5% larger
@@ -66,8 +67,8 @@ static BoundingBox computeBoundingBox(AttractorSet *attractorSet, Variations *va
     return bbox;
 }
 
-static void render(Image &image, AttractorSet *attractorSet, Variations *variations,
-        const ColorMap *map, const BoundingBox &bbox, int seed) {
+static void render(Image &image, Config const &config,
+        const BoundingBox &bbox, int seed) {
 
     // Initialize the seed for our thread.
     init_rand(seed);
@@ -80,16 +81,16 @@ static void render(Image &image, AttractorSet *attractorSet, Variations *variati
     double y = 0;
 
     for (uint64_t i = 0; i < FEW_SECONDS_ITERATIONS; i++) {
-        Attractor *attractor = attractorSet->choose();
-        attractor->transform(x, y);
-        variations->transform(x, y);
+        Attractor const &attractor = config.attractorSet().choose();
+        attractor.transform(x, y);
+        config.variations().transform(x, y);
 
         // Map to pixel.
         int ix = (int) (bbox.normalizeX(x)*(WIDTH - 1) + 0.5);
         int iy = (int) ((1 - bbox.normalizeY(y))*(HEIGHT- 1) + 0.5);
 
         // Move half-way to new color value.
-        double newColorMapValue = attractor->getColorMapValue();
+        double newColorMapValue = attractor.getColorMapValue();
         colorMapValue = (colorMapValue + newColorMapValue)/2;
 
         if (image.isInBounds(ix, iy) && i >= FUSE_LENGTH) {
@@ -97,7 +98,7 @@ static void render(Image &image, AttractorSet *attractorSet, Variations *variati
             int colorIndex = (int) (colorMapValue*255 + 0.5);
 
             linear_color red, green, blue;
-            map->getColor(colorIndex, red, green, blue);
+            config.colorMap().getColor(colorIndex, red, green, blue);
             image.touchPixel(ix, iy, red, green, blue);
         }
 
@@ -107,10 +108,9 @@ static void render(Image &image, AttractorSet *attractorSet, Variations *variati
     }
 }
 
-int main(int argc, char *argv[]) {
+int main(/* int argc, char *argv[] */) {
     // Number of threads to use.
-    int thread_count;
-    thread_count = std::thread::hardware_concurrency();
+    int thread_count = std::thread::hardware_concurrency();
     std::cout << "Using " << thread_count << " threads.\n";
 
     // Load all color maps.
@@ -122,26 +122,29 @@ int main(int argc, char *argv[]) {
     }
 
     // Get the color map by name.
-    ColorMap *map = colorMaps.get("wooden-highlight");
+    auto map = colorMaps.get("wooden-highlight");
 
     // Get the attractor set.
     /// AttractorSet *attractorSet = AttractorSet::makeFernAttractors();
     /// AttractorSet *attractorSet = AttractorSet::makeSierpinskiAttractors();
-    AttractorSet *attractorSet = AttractorSet::makeLeafAttractors3();
+    auto attractorSet = AttractorSet::makeLeafAttractors3();
 
     // Get variations.
-    Variations *variations = new Variations(0, 0, 0, 0, 1, 0, 0);
+    auto variations = std::make_unique<Variations>(0, 0, 0, 0, 1, 0, 0);
+
+    auto config = std::make_unique<Config>(
+            std::move(attractorSet), std::move(variations), map);
 
     // Compute bounding box.
-    BoundingBox bbox = computeBoundingBox(attractorSet, variations);
+    BoundingBox bbox = computeBoundingBox(*config);
 
     // Generate the image on multiple threads.
     std::vector<std::thread> threads;
     std::vector<std::unique_ptr<Image>> images;
     for (int t = 0; t < thread_count; t++) {
         images.emplace_back(std::make_unique<Image>(WIDTH, HEIGHT));
-        threads.emplace_back(render, std::ref(*images.back()), attractorSet,
-                variations, map, bbox, random());
+        threads.emplace_back(render, std::ref(*images.back()),
+                std::cref(*config), std::cref(bbox), random());
     }
 
     // Wait for worker threads to quit, then blend images.
