@@ -156,6 +156,9 @@ int main(int argc, char *argv[]) {
         images[t] = 0;
     }
 
+    std::cout << "Brightening darks..." << std::endl;
+    image.brightenDarks();
+
     // Save the final image.
     success = image.save("out.png");
     if (!success) {

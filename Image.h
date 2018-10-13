@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <math.h>
 #include "stb_image_write.h"
 
 // Image with 64-bit values for RGB.
@@ -58,23 +59,44 @@ public:
         }
     }
 
+    /**
+     * Multiply image by log of its count so that darks get brighter.
+     */
+    void brightenDarks() {
+        for (int i = 0; i < mPixelCount; i++) {
+            uint64_t count = mCount[i];
+
+            if (count > 0) {
+                // Multiply by log to brighten the darks and simulate film
+                // exposure. Add 1 to avoid negative values.
+                double mult = log(1.0 + count)/count;
+
+                mRed[i] = (int) (mRed[i]*mult);
+                mGreen[i] = (int) (mGreen[i]*mult);
+                mBlue[i] = (int) (mBlue[i]*mult);
+            }
+        }
+    }
+
     // Saves the image to the pathname as a PNG file, returning
     // whether successful.
     bool save(const std::string &pathname) const {
+        uint64_t max = 0;
+
+        // Find max so we can normalize whole image.
+        for (int i = 0; i < mPixelCount; i++) {
+            if (mRed[i] > max) max = mRed[i];
+            if (mGreen[i] > max) max = mGreen[i];
+            if (mBlue[i] > max) max = mBlue[i];
+        }
+        double invCount = max == 0 ? 0 : 255.0/max;
+
         std::vector<uint8_t> rgb(mPixelCount*3);
 
         for (int i = 0; i < mPixelCount; i++) {
-            if (mCount[i] == 0) {
-                rgb[i*3 + 0] = 0;
-                rgb[i*3 + 1] = 0;
-                rgb[i*3 + 2] = 0;
-            } else {
-                double invCount = 1.0/mCount[i];
-
-                rgb[i*3 + 0] = (int) (mRed[i]*invCount);
-                rgb[i*3 + 1] = (int) (mGreen[i]*invCount);
-                rgb[i*3 + 2] = (int) (mBlue[i]*invCount);
-            }
+            rgb[i*3 + 0] = (int) (mRed[i]*invCount + 0.5);
+            rgb[i*3 + 1] = (int) (mGreen[i]*invCount + 0.5);
+            rgb[i*3 + 2] = (int) (mBlue[i]*invCount + 0.5);
         }
 
         int success = stbi_write_png(pathname.c_str(),
