@@ -13,6 +13,9 @@ add_executable(ifs ${SOURCES})
 # What to link with.
 target_link_libraries(ifs m pthread)
 
+# We need these C++ features.
+target_compile_features(ifs PRIVATE cxx_range_for cxx_thread_local)
+
 # If we're on MacOS, add minifb.
 if(APPLE)
     message("-- Adding minifb to display rendered images")

@@ -35,7 +35,7 @@ public:
         int success = stbi_write_png(pathname.c_str(),
                 mWidth, mHeight, 3, &rgb[0], mWidth*3);
 
-        return true;
+        return success;
     }
 };
 

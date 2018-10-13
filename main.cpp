@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include "Image.h"
+#include "AttractorSet.h"
 
 #ifdef DISPLAY
 #include "MiniFB.h"
