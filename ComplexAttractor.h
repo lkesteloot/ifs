@@ -22,6 +22,10 @@ public:
         // Nothing.
     }
 
+    ComplexAttractor(std::istream &is) {
+        is >> mSr >> mSi >> mAr >> mAi;
+    }
+
     virtual void transform(double &x, double &y) const {
         // P' = S*P + (1 - S)*A
         //    = S*P + A - S*A

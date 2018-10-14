@@ -114,7 +114,14 @@ static void render(Image &image, Config const &config,
     }
 }
 
-int main(/* int argc, char *argv[] */) {
+int main(int argc, char *argv[]) {
+    std::string configPathname;
+    if (argc != 2) {
+        std::cerr << "Usage: ifs in.config" << std::endl;
+        return -1;
+    }
+    configPathname = argv[1];
+
     // Number of threads to use.
     int thread_count = std::thread::hardware_concurrency();
     std::cout << "Using " << thread_count << " threads.\n";
@@ -127,7 +134,7 @@ int main(/* int argc, char *argv[] */) {
         return -1;
     }
 
-    auto config = Config::load("leaf.config", colorMaps);
+    auto config = Config::load(configPathname, colorMaps);
     if (!config) {
         return -1;
     }

@@ -124,61 +124,6 @@ public:
     }
 
 #if 0
-    static AttractorSet *makeSierpinskiAttractors() {
-        AttractorSet *a = new AttractorSet(3);
-
-        a->set(0, new AverageAttractor(0.2, 0.3));
-        a->set(1, new AverageAttractor(0.8, 0.6));
-        a->set(2, new AverageAttractor(0.4, 0.9));
-
-        a->setColorMapValue(0, 0.0);
-        a->setColorMapValue(1, 1.0);
-        a->setColorMapValue(2, 0.5);
-
-        a->makeEqualProbability();
-        a->makeProbabilityMap();
-
-        return a;
-    }
-
-    static AttractorSet *makeLeafAttractors(double param) {
-        AttractorSet *a = new AttractorSet(4);
-
-        a->set(0, new ComplexAttractor(0.6 + param/10, 0 - param/10, 0.45, 0.9));
-        a->set(1, new ComplexAttractor(0.6 + param/10, 0 - param/10, 0.45, 0.3));
-        a->set(2, new ComplexAttractor(0.4, -0.3, 0.60, 0.3));
-        a->set(3, new ComplexAttractor(0.4, 0.3, 0.30, 0.3));
-
-        a->setColorMapValue(0, 0.1);
-        a->setColorMapValue(1, 0.3);
-        a->setColorMapValue(2, 0.6);
-        a->setColorMapValue(3, 0.9);
-
-        a->makeEqualProbability();
-        a->makeProbabilityMap();
-
-        return a;
-    }
-
-    static AttractorSet *makeLeafAttractors2() {
-        AttractorSet *a = new AttractorSet(4);
-
-        a->set(0, new ComplexAttractor(0.6, 0, 0.45, 0.9));
-        a->set(1, new ComplexAttractor(0.6, 0, 0.45, 0.3));
-        a->set(2, new ComplexAttractor(0.4, -0.3, 0.45, -0.3));
-        a->set(3, new ComplexAttractor(0.4, 0.3, 0.45, -0.9));
-
-        a->setColorMapValue(0, 0.1);
-        a->setColorMapValue(1, 0.3);
-        a->setColorMapValue(2, 0.6);
-        a->setColorMapValue(3, 0.9);
-
-        a->makeEqualProbability();
-        a->makeProbabilityMap();
-
-        return a;
-    }
-
     static AttractorSet *makeFlameTestAttractors(double param) {
         AttractorSet *a = new AttractorSet(4);
 

@@ -69,10 +69,12 @@ public:
             std::string attractorType;
             f >> attractorType;
 
-            if (attractorType == "avg") {
-                double x, y;
-                f >> x >> y;
-                attractorSet->set(i, std::make_unique<AverageAttractor>(x, y));
+            if (attractorType == "average") {
+                attractorSet->set(i, std::make_unique<AverageAttractor>(f));
+            } else if (attractorType == "complex") {
+                attractorSet->set(i, std::make_unique<ComplexAttractor>(f));
+            } else if (attractorType == "transform") {
+                attractorSet->set(i, std::make_unique<TransformAttractor>(f));
             } else {
                 std::cerr << "Unknown attractor type: "
                     << attractorType << std::endl;

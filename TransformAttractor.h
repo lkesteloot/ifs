@@ -26,13 +26,8 @@ public:
         this->f = f;
     }
 
-    TransformAttractor(double x[]) {
-        this->a = x[0];
-        this->b = x[1];
-        this->c = x[2];
-        this->d = x[3];
-        this->e = x[4];
-        this->f = x[5];
+    TransformAttractor(std::istream &is) {
+        is >> a >> b >> c >> d >> e >> f;
     }
 
     virtual void transform(double &x, double &y) const {

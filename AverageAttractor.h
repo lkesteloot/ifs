@@ -18,6 +18,10 @@ public:
         // Nothing.
     }
 
+    AverageAttractor(std::istream &is) {
+        is >> mTx >> mTy;
+    }
+
     virtual void transform(double &x, double &y) const {
         x = (x + mTx)/2;
         y = (y + mTy)/2;
