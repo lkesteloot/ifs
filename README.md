@@ -3,6 +3,8 @@
 A C++ implementation of an
 [iterated function system](https://en.wikipedia.org/wiki/Iterated_function_system).
 
+![leaf3](images/leaf3.png)
+
 # Build
 
 Build using CMake:
@@ -47,8 +49,8 @@ types are:
   S is (0,0), the point is moved to A. If it's (1,0), it stays where it is.
 * `transform`: Multiplies the point by the 2x3 matrix:
 
-    | a  b  e |
-    | c  d  f |
+      | a  b  e |
+      | c  d  f |
 
 The last line of the config file is a sequence of seven reals,
 mapping to the seven variations specified in the `Variations.h`
