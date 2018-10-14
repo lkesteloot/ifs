@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <memory>
+#include <sys/stat.h>
 #include "AttractorSet.h"
 #include "Variations.h"
 #include "ColorMap.h"
@@ -9,19 +10,27 @@
 
 // Configuration for this image.
 class Config {
+    uint64_t mFileTime;
     std::unique_ptr<AttractorSet> mAttractorSet;
     std::unique_ptr<Variations> mVariations;
     std::shared_ptr<const ColorMap> mColorMap;
 
 public:
-    Config(std::unique_ptr<AttractorSet> &&attractorSet,
+    Config(uint64_t fileTime,
+            std::unique_ptr<AttractorSet> &&attractorSet,
             std::unique_ptr<Variations> &&variations,
             std::shared_ptr<const ColorMap> colorMap)
-        : mAttractorSet(std::move(attractorSet)),
+        : mFileTime(fileTime),
+        mAttractorSet(std::move(attractorSet)),
         mVariations(std::move(variations)),
         mColorMap(colorMap) {
 
         // Nothing.
+    }
+
+    // File modification time.
+    uint64_t fileTime() const {
+        return mFileTime;
     }
 
     AttractorSet const &attractorSet() const {
@@ -36,9 +45,35 @@ public:
         return *mColorMap;
     }
 
+    /**
+     * Return the modification time of the file, in nanoseconds since
+     * the epoch, or 0 if the file can't be opened (and an error is
+     * printed).
+     */
+    static uint64_t getFileTime(std::string const &pathname) {
+        struct stat statbuf;
+        int result = stat(pathname.c_str(), &statbuf);
+        if (result == -1) {
+            perror(pathname.c_str());
+            return 0;
+        }
+        return statbuf.st_mtimespec.tv_sec*1000000000LL +
+            statbuf.st_mtimespec.tv_nsec;
+    }
+
+    /**
+     * Load the config file, or null on error.
+     */
     static std::unique_ptr<Config> load(std::string const &pathname,
             ColorMaps const &colorMaps) {
 
+        // Grab file modification time.
+        uint64_t fileTime = getFileTime(pathname);
+        if (fileTime == 0) {
+            return nullptr;
+        }
+
+        // Open file.
         std::fstream f(pathname);
         if (!f) {
             std::cerr << "Config file not found: " << pathname << std::endl;
@@ -98,7 +133,7 @@ public:
         // Get variations.
         auto variations = std::make_unique<Variations>(f);
 
-        return std::make_unique<Config>(
+        return std::make_unique<Config>(fileTime,
                 std::move(attractorSet), std::move(variations), map);
     }
 };

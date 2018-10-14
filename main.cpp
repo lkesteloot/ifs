@@ -26,7 +26,7 @@ static const int FUSE_LENGTH = 10000;
 static const int WIDTH = 256*2;
 static const int HEIGHT = 256*2;
 
-static bool g_done = false;
+static bool g_done;
 
 static BoundingBox computeBoundingBox(Config const &config) {
     std::cout << "Finding the bounding box..." << std::endl;
@@ -134,14 +134,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    auto config = Config::load(configPathname, colorMaps);
-    if (!config) {
-        return -1;
-    }
-
-    // Compute bounding box.
-    BoundingBox bbox = computeBoundingBox(*config);
-
 #ifdef DISPLAY
     if (INTERACTIVE) {
         if (!mfb_open("ifs", WIDTH, HEIGHT)) {
@@ -151,67 +143,92 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    // Generate the image on multiple threads.
-    std::vector<std::thread> threads;
-    std::vector<std::unique_ptr<Image>> images;
-    for (int t = 0; t < thread_count; t++) {
-        images.emplace_back(std::make_unique<Image>(WIDTH, HEIGHT));
-        threads.emplace_back(render, std::ref(*images.back()),
-                std::cref(*config), std::cref(bbox), random());
-    }
+    bool quit_program = false;
 
-    if (INTERACTIVE) {
-        while (!g_done) {
-            // Time this update work.
-            Timer timer;
+    // Keep reloading config file.
+    do {
+        g_done = false;
 
-            // Blend images.
+        // Load config file.
+        auto config = Config::load(configPathname, colorMaps);
+        if (!config) {
+            return -1;
+        }
+
+        // Compute bounding box.
+        BoundingBox bbox = computeBoundingBox(*config);
+
+        // Generate the image on multiple threads.
+        std::vector<std::thread> threads;
+        std::vector<std::unique_ptr<Image>> images;
+        for (int t = 0; t < thread_count; t++) {
+            images.emplace_back(std::make_unique<Image>(WIDTH, HEIGHT));
+            threads.emplace_back(render, std::ref(*images.back()),
+                    std::cref(*config), std::cref(bbox), random());
+        }
+
+        if (INTERACTIVE) {
+            while (!g_done) {
+                // Time this update work.
+                Timer timer;
+
+                // Blend images.
+                Image image(WIDTH, HEIGHT);
+                for (int t = 0; t < thread_count; t++) {
+                    image.add(*images[t]);
+                }
+
+                // Simulate film exposure.
+                image.brightenDarks();
+
+                // Convert to 8-bit.
+                std::vector<gamma_color> bgra;
+                image.toBgra(bgra);
+
+                int state = mfb_update(&bgra[0]);
+                if (state < 0) {
+                    // Tell threads to quit.
+                    g_done = true;
+                    quit_program = true;
+                } else {
+                    double elapsed = timer.elapsed();
+
+#if 0
+                    std::cerr << "Update took " <<
+                        std::fixed << std::setprecision(elapsed < 0.2 ? 3 : 1) << elapsed << " seconds.\n";
+#endif
+                    usleep(200*1000);
+
+                    uint64_t fileTime = Config::getFileTime(configPathname);
+                    if (fileTime != 0 && fileTime != config->fileTime()) {
+                        std::cout << "Reloading config file." << std::endl;
+                        g_done = true;
+                    }
+                }
+            }
+
+            // Wait for threads to finish.
+            for (int t = 0; t < thread_count; t++) {
+                threads[t].join();
+            }
+        } else {
+            // Wait for worker threads to quit, then blend images.
             Image image(WIDTH, HEIGHT);
             for (int t = 0; t < thread_count; t++) {
+                threads[t].join();
                 image.add(*images[t]);
             }
 
-            // Simulate film exposure.
+            std::cout << "Brightening darks..." << std::endl;
             image.brightenDarks();
 
-            // Convert to 8-bit.
-            std::vector<gamma_color> bgra;
-            image.toBgra(bgra);
-
-            int state = mfb_update(&bgra[0]);
-            if (state < 0) {
-                // Tell threads to quit.
-                g_done = true;
-            } else {
-                double elapsed = timer.elapsed();
-
-                std::cerr << "Update took " <<
-                    std::fixed << std::setprecision(elapsed < 0.2 ? 3 : 1) << elapsed << " seconds.\n";
-                usleep(1000*1000);
+            // Save the final image.
+            success = image.save("out.png");
+            if (!success) {
+                std::cerr << "Cannot write output image.\n";
             }
         }
-
-        // Wait for threads to finish.
-        for (int t = 0; t < thread_count; t++) {
-            threads[t].join();
-        }
-    } else {
-        // Wait for worker threads to quit, then blend images.
-        Image image(WIDTH, HEIGHT);
-        for (int t = 0; t < thread_count; t++) {
-            threads[t].join();
-            image.add(*images[t]);
-        }
-
-        std::cout << "Brightening darks..." << std::endl;
-        image.brightenDarks();
-
-        // Save the final image.
-        success = image.save("out.png");
-        if (!success) {
-            std::cerr << "Cannot write output image.\n";
-        }
-    }
+    } while (INTERACTIVE && !quit_program);
 
     return 0;
 }
