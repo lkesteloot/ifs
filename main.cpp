@@ -19,8 +19,8 @@
 #include "MiniFB.h"
 #endif
 
-static const bool INTERACTIVE = true;
-static const uint64_t FEW_SECONDS_ITERATIONS = INTERACTIVE ? -1 : 25000000LL;
+static const bool INTERACTIVE = false;
+static const uint64_t FEW_SECONDS_ITERATIONS = INTERACTIVE ? -1 : 250000000LL;
 static const uint64_t ITERATION_UPDATE = 10000000LL;
 static const int FUSE_LENGTH = 10000;
 static const int WIDTH = 256*2;
@@ -66,7 +66,7 @@ static BoundingBox computeBoundingBox(Config const &config) {
     const int skip = (int) (PERCENTILE*SAMPLE_COUNT/100 + 0.5);
     bbox = BoundingBox(x_history[skip], y_history[skip],
             x_history[SAMPLE_COUNT - skip - 1], y_history[SAMPLE_COUNT - skip - 1]);
-    bbox.growBy(0.05);  // 5% larger
+    bbox.growBy(0.15);
     bbox.makeSquare();
     std::cout << "Computed bounding box (percentile): " << bbox << std::endl;
 
