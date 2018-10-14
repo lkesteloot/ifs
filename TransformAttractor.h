@@ -34,11 +34,8 @@ public:
         double new_x = a*x + b*y + e;
         double new_y = c*x + d*y + f;
 
-        // Move to the inverse magnitude. (Why?)
-        double r2 = 1/(new_x*new_x + new_y*new_y + 1e-6);
-
-        x = new_x*r2;
-        y = new_y*r2;
+        x = new_x;
+        y = new_y;
     }
 };
 
