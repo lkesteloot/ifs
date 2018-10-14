@@ -178,28 +178,7 @@ public:
 
         return a;
     }
-#endif
 
-    static std::unique_ptr<AttractorSet> makeLeafAttractors3() {
-        auto a = std::make_unique<AttractorSet>(4);
-
-        a->set(0, std::make_unique<AverageAttractor>(0.0, 0.9));
-        a->set(1, std::make_unique<AverageAttractor>(0.3, 0.3));
-        a->set(2, std::make_unique<AverageAttractor>(-0.3, -0.3));
-        a->set(3, std::make_unique<AverageAttractor>(0.0, -0.9));
-
-        a->setColorMapValue(0, 0.1);
-        a->setColorMapValue(1, 0.3);
-        a->setColorMapValue(2, 0.6);
-        a->setColorMapValue(3, 0.9);
-
-        a->makeEqualProbability();
-        a->makeProbabilityMap();
-
-        return a;
-    }
-
-#if 0
     static AttractorSet *makeFlameTestAttractors(double param) {
         AttractorSet *a = new AttractorSet(4);
 

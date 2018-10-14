@@ -22,6 +22,11 @@ public:
         this->g = g;
     }
 
+    Variations(std::istream &f) {
+        f >> this->a >> this->b >> this->c >> this->d
+            >> this->e >> this->f >> this->g;
+    }
+
     /**
      * Modifies the point by a blend of a bunch of variations.
      */

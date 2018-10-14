@@ -127,19 +127,10 @@ int main(/* int argc, char *argv[] */) {
         return -1;
     }
 
-    // Get the color map by name.
-    auto map = colorMaps.get("wooden-highlight");
-
-    // Get the attractor set.
-    /// auto attractorSet = AttractorSet::makeFernAttractors();
-    /// auto attractorSet = AttractorSet::makeSierpinskiAttractors();
-    auto attractorSet = AttractorSet::makeLeafAttractors3();
-
-    // Get variations.
-    auto variations = std::make_unique<Variations>(0, 0, 0, 0, 1, 0, 0);
-
-    auto config = std::make_unique<Config>(
-            std::move(attractorSet), std::move(variations), map);
+    auto config = Config::load("leaf.config", colorMaps);
+    if (!config) {
+        return -1;
+    }
 
     // Compute bounding box.
     BoundingBox bbox = computeBoundingBox(*config);

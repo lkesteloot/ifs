@@ -49,7 +49,8 @@ public:
      * Get a color map by name, or null if not found.
      */
     std::shared_ptr<const ColorMap> get(const std::string &name) const {
-        return mMaps.at(name);
+        auto itr = mMaps.find(name);
+        return itr == mMaps.end() ? nullptr : itr->second;
     }
 };
 
