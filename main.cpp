@@ -19,12 +19,12 @@
 #include "MiniFB.h"
 #endif
 
-static const bool INTERACTIVE = false;
+static const bool INTERACTIVE = true;
 static const uint64_t FEW_SECONDS_ITERATIONS = INTERACTIVE ? -1 : 250000000LL;
 static const uint64_t ITERATION_UPDATE = 10000000LL;
 static const int FUSE_LENGTH = 10000;
-static const int WIDTH = 256*2;
-static const int HEIGHT = 256*2;
+static const int WIDTH = 256*3;
+static const int HEIGHT = 256*3;
 
 static bool g_done;
 
