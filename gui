@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+
+import sys, os, tempfile
+from tkinter import *
+
+master = None
+
+# Stores info about a particular attractor in the config file.
+class Attractor:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def parse(s):
+        values = s.strip().split()
+
+        attractor = Attractor()
+
+        attractor.probability = float(values[0])
+        attractor.color = float(values[1])
+        attractor.type = values[2]
+        attractor.params = list(float(v) for v in values[3:])
+
+        return attractor
+
+    def __str__(self):
+        return "%g %g %s %s" % (self.probability, self.color, self.type,
+                " ".join(str(p) for p in self.params))
+
+# The entire config file.
+class Config:
+    def __init__(self):
+        self.color_map_name = None
+        self.attractors = []
+        self.variations = []
+
+    @staticmethod
+    def load(master, pathname):
+        lines = list(open(pathname).readlines())
+
+        config = Config()
+
+        config.color_map_name = StringVar(master, lines[0].strip())
+        attractor_count = int(lines[1])
+        for i in range(attractor_count):
+            config.attractors.append(Attractor.parse(lines[2 + i]))
+
+        config.variations = list(DoubleVar(master, float(v)) for v
+                in lines[2 + attractor_count].strip().split())
+
+        return config
+
+    def save(self, pathname):
+        # Atomically write the config file so that the ifs program never reads
+        # a half-written file.
+        f = tempfile.NamedTemporaryFile(mode="w", dir=os.path.dirname(pathname), delete=False)
+        f.write(str(self) + "\n")
+        f.close()
+        os.rename(f.name, pathname)
+
+    def __str__(self):
+        return "%s\n%d\n%s\n%s" % (self.color_map_name.get(), len(self.attractors),
+                "\n".join(str(a) for a in self.attractors),
+                " ".join(("%g" % v.get()) for v in self.variations))
+
+# Return a list of all color map names.
+def read_color_map_names(pathname):
+    lines = list(open(pathname).readlines())
+    return [lines[i].strip() for i in range(0, len(lines), 258)]
+
+# Create an artificial 50ms event so that Ctrl-C in the shell is responsive.
+def check_event():
+    master.after(50, check_event)
+
+def main():
+    global master
+    master = Tk()
+
+    if len(sys.argv) != 2:
+        sys.stderr.write("Usage: %s file.config\n" % sys.argv[0])
+        sys.exit(1)
+
+    config_pathname = sys.argv[1]
+
+    try:
+        config = Config.load(master, config_pathname)
+    except FileNotFoundError as e:
+        sys.stderr.write("Can't load file \"%s\" (%s)\n" % (config_pathname, e.strerror))
+        sys.exit(1)
+
+    color_map_pathname = "ColorMap.txt"
+    try:
+        color_map_names = read_color_map_names(color_map_pathname)
+    except FileNotFoundError as e:
+        sys.stderr.write("Can't load file \"%s\" (%s)\n" % (color_map_pathname, e.strerror))
+        sys.exit(1)
+
+    # Set window title to pathname of config file.
+    master.title(config_pathname)
+
+    # Make sure Ctrl-C is responsive.
+    check_event
+
+    # Function to convert a command to a save action.
+    save_command = lambda v: config.save(config_pathname)
+
+    # Drop-down for color map.
+    w = OptionMenu(master, config.color_map_name, *color_map_names, command=save_command)
+    w.config(width=40)
+    w.pack()
+
+    # Sliders for each variation.
+    for var in config.variations:
+        w = Scale(master, variable=var, from_=0, to=2, resolution=0.01, orient=HORIZONTAL,
+                command=save_command, length=400)
+        w.pack()
+
+    try:
+        mainloop()
+    except KeyboardInterrupt:
+        print()
+
+if __name__ == "__main__":
+    main()
